@@ -1,184 +1,174 @@
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/portfolio_item.dart';
 import '../models/stock.dart';
+import '../services/stock_service.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 
 class PortfolioController extends GetxController {
+  final StockService _stockService = StockService();
+  final _firestore = FirebaseFirestore.instance;
+  
   final RxList<PortfolioItem> portfolioItems = <PortfolioItem>[].obs;
   final RxBool isLoading = false.obs;
+  StreamSubscription<QuerySnapshot>? _portfolioSubscription;
 
-  static const String _boxName = 'portfolio';
-  Box<PortfolioItem>? _box;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  void _showSnackBar(String title, String message, {bool isError = false}) {
+    Get.closeAllSnackbars();
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 2),
+      backgroundColor: isError ? Colors.red : Colors.green,
+      colorText: Colors.white,
+      margin: const EdgeInsets.all(8),
+      borderRadius: 8,
+      isDismissible: true,
+    );
+  }
 
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
-    await _initHive();
-    await loadPortfolio();
+    _setupPortfolioListener();
   }
 
   @override
   void onClose() {
-    _box?.close();
+    _portfolioSubscription?.cancel();
     super.onClose();
   }
 
-  Future<void> _initHive() async {
+  void _setupPortfolioListener() {
     try {
-      _box = await Hive.openBox<PortfolioItem>(_boxName);
+      _portfolioSubscription?.cancel();
+      _portfolioSubscription = _firestore
+          .collection('portfolio')
+          .snapshots()
+          .listen((snapshot) {
+        final items = <PortfolioItem>[];
+        
+        for (var doc in snapshot.docs) {
+          try {
+            final data = doc.data();
+            data['id'] = doc.id;
+            
+            if (data['purchaseDate'] is Timestamp) {
+              data['purchaseDate'] = (data['purchaseDate'] as Timestamp).toDate();
+            }
+            
+            items.add(PortfolioItem.fromJson(data));
+          } catch (e) {
+            print('Error parsing portfolio item: $e');
+          }
+        }
+        
+        portfolioItems.value = items;
+      }, onError: (error) {
+        print('Error in portfolio listener: $error');
+        _showSnackBar('오류', '포트폴리오 업데이트 중 오류가 발생했습니다', isError: true);
+      });
     } catch (e) {
-      Get.snackbar(
-        '오류',
-        'Hive 초기화 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error setting up portfolio listener: $e');
     }
   }
 
-  Future<void> loadPortfolio() async {
-    if (_box == null) {
-      await _initHive();
-    }
-
-    isLoading.value = true;
+  Future<void> clearPortfolio() async {
     try {
-      // 로컬 데이터 로드
-      if (_box != null) {
-        portfolioItems.value = _box!.values.toList();
-      }
-
-      // Firestore 데이터 동기화
+      isLoading.value = true;
       final snapshot = await _firestore.collection('portfolio').get();
-      final cloudItems = snapshot.docs
-          .map((doc) => PortfolioItem(
-                stock: Stock(
-                  symbol: doc['symbol'],
-                  name: doc['name'],
-                  exchange: doc['exchange'],
-                  currency: doc['currency'],
-                ),
-                quantity: doc['quantity'],
-                averagePrice: doc['averagePrice'].toDouble(),
-                purchaseDate: (doc['purchaseDate'] as Timestamp).toDate(),
-              ))
-          .toList();
-
-      // 로컬 데이터 업데이트
-      if (_box != null) {
-        await _box!.clear();
-        await _box!.addAll(cloudItems);
+      final batch = _firestore.batch();
+      
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
       }
-      portfolioItems.value = cloudItems;
+      
+      await batch.commit();
+      _showSnackBar('성공', '포트폴리오가 초기화되었습니다');
     } catch (e) {
-      Get.snackbar(
-        '오류',
-        '포트폴리오 로드 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error clearing portfolio: $e');
+      _showSnackBar('오류', '포트폴리오 초기화 중 오류가 발생했습니다', isError: true);
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> addPortfolioItem(PortfolioItem item) async {
-    if (_box == null) {
-      await _initHive();
-    }
-
     try {
-      // 로컬 저장
-      if (_box != null) {
-        final index = await _box!.add(item);
-        portfolioItems.add(item);
-
-        // Firestore 저장
-        await _firestore.collection('portfolio').doc(index.toString()).set({
-          'symbol': item.stock.symbol,
-          'name': item.stock.name,
-          'exchange': item.stock.exchange,
-          'currency': item.stock.currency,
-          'quantity': item.quantity,
-          'averagePrice': item.averagePrice,
-          'purchaseDate': item.purchaseDate,
-        });
-
-        Get.snackbar(
-          '성공',
-          '${item.stock.name} 종목이 추가되었습니다.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
+      final data = {
+        'symbol': item.symbol,
+        'name': item.name,
+        'shares': item.shares,
+        'averagePrice': item.averagePrice,
+        'purchaseDate': Timestamp.fromDate(item.purchaseDate),
+      };
+      
+      await _firestore.collection('portfolio').add(data);
+      
+      // 먼저 다이얼로그를 닫고
+      Get.back();
+      // 그 다음 종목 추가 화면을 닫음
+      Get.back();
+      
+      _showSnackBar('성공', '${item.name} 종목이 추가되었습니다');
     } catch (e) {
-      Get.snackbar(
-        '오류',
-        '종목 추가 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error adding portfolio item: $e');
+      _showSnackBar('오류', '종목 추가 중 오류가 발생했습니다', isError: true);
+      rethrow;
     }
   }
 
-  Future<void> updatePortfolioItem(int index, PortfolioItem item) async {
-    if (_box == null) {
-      await _initHive();
-    }
-
+  Future<void> updatePortfolioItem(PortfolioItem item) async {
     try {
-      // 로컬 업데이트
-      if (_box != null) {
-        await _box!.putAt(index, item);
-        portfolioItems[index] = item;
-
-        // Firestore 업데이트
-        await _firestore.collection('portfolio').doc(index.toString()).update({
-          'quantity': item.quantity,
-          'averagePrice': item.averagePrice,
-        });
-
-        Get.snackbar(
-          '성공',
-          '${item.stock.name} 종목이 업데이트되었습니다.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+      if (item.id == null) {
+        throw Exception('Portfolio item ID is null');
       }
+
+      final data = {
+        'symbol': item.symbol,
+        'name': item.name,
+        'shares': item.shares,
+        'averagePrice': item.averagePrice,
+        'purchaseDate': Timestamp.fromDate(item.purchaseDate),
+      };
+
+      await _firestore.collection('portfolio').doc(item.id).update(data);
+      _showSnackBar('성공', '${item.name} 종목이 수정되었습니다');
     } catch (e) {
-      Get.snackbar(
-        '오류',
-        '종목 업데이트 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error updating portfolio item: $e');
+      _showSnackBar('오류', '종목 수정 중 오류가 발생했습니다', isError: true);
+      rethrow;
     }
   }
 
-  Future<void> deletePortfolioItem(int index) async {
-    if (_box == null) {
-      await _initHive();
-    }
-
+  Future<void> deletePortfolioItem(String id) async {
     try {
-      if (_box != null) {
-        final item = portfolioItems[index];
-
-        // 로컬 삭제
-        await _box!.deleteAt(index);
-        portfolioItems.removeAt(index);
-
-        // Firestore 삭제
-        await _firestore.collection('portfolio').doc(index.toString()).delete();
-
-        Get.snackbar(
-          '성공',
-          '${item.stock.name} 종목이 삭제되었습니다.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
+      final item = portfolioItems.firstWhere((item) => item.id == id);
+      await _firestore.collection('portfolio').doc(id).delete();
+      _showSnackBar('성공', '${item.name} 종목이 삭제되었습니다');
     } catch (e) {
-      Get.snackbar(
-        '오류',
-        '종목 삭제 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error deleting portfolio item: $e');
+      _showSnackBar('오류', '종목 삭제 중 오류가 발생했습니다', isError: true);
+      rethrow;
+    }
+  }
+
+  Future<List<PortfolioItem>> searchStocks(String query) async {
+    try {
+      final stocks = await _stockService.searchStocks(query);
+      return stocks.map((stock) => PortfolioItem(
+        symbol: stock.symbol,
+        name: stock.name,
+        shares: 0,
+        averagePrice: 0,
+        purchaseDate: DateTime.now(),
+      )).toList();
+    } catch (e) {
+      print('Error searching stocks: $e');
+      _showSnackBar('오류', '종목 검색 중 오류가 발생했습니다', isError: true);
+      return [];
     }
   }
 }

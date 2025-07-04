@@ -2,7 +2,7 @@
 
 DividendRadar 구현 단계별 가이드
 
-Phase 1: 프로젝트 초기 설정 및 기본 구조
+Phase 1: 프로젝트 초기 설정 및 기본 구조 -완료료
 프로젝트 환경 구성
 Flutter 프로젝트 생성 및 필수 패키지 설치
 GetX 패턴 적용을 위한 기본 구조 설정
@@ -13,7 +13,7 @@ Portfolio, Stock, Dividend 등 핵심 모델 정의
 Hive TypeAdapter 구현으로 로컬 저장소 연동
 JSON 직렬화/역직렬화 로직 구현
 
-Phase 2: 포트폴리오 관리 기능
+Phase 2: 포트폴리오 관리 기능 -완료료
 포트폴리오 입력 시스템
 종목 검색 및 자동완성 기능 구현 (Yahoo Finance API 활용)
 보유 수량, 평균단가, 매수일 입력 폼 구현

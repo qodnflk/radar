@@ -2,34 +2,140 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/portfolio_controller.dart';
 import '../../models/portfolio_item.dart';
+import '../../models/dividend.dart';
+import '../../services/dividend_service.dart';
 
-class PortfolioDetailScreen extends StatelessWidget {
+class PortfolioDetailScreen extends StatefulWidget {
   final PortfolioItem item;
-  final PortfolioController controller = Get.find();
 
-  PortfolioDetailScreen({super.key, required this.item});
+  const PortfolioDetailScreen({Key? key, required this.item}) : super(key: key);
 
-  void _showDeleteConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('종목 삭제'),
-        content: Text('${item.stock.name} 종목을 삭제하시겠습니까?'),
+  @override
+  _PortfolioDetailScreenState createState() => _PortfolioDetailScreenState();
+}
+
+class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
+  final PortfolioController controller = Get.find<PortfolioController>();
+  final DividendService _dividendService = DividendService();
+  late TextEditingController sharesController;
+  late TextEditingController priceController;
+  List<Dividend> dividends = [];
+  bool isLoadingDividends = false;
+
+  @override
+  void initState() {
+    super.initState();
+    sharesController =
+        TextEditingController(text: widget.item.shares.toString());
+    priceController =
+        TextEditingController(text: widget.item.averagePrice.toString());
+    _loadDividends();
+  }
+
+  Future<void> _loadDividends() async {
+    setState(() => isLoadingDividends = true);
+    try {
+      final yahooData =
+          await _dividendService.fetchYahooDividends(widget.item.symbol);
+      setState(() {
+        dividends = yahooData;
+        isLoadingDividends = false;
+      });
+    } catch (e) {
+      print('Error loading dividends: $e');
+      setState(() => isLoadingDividends = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    sharesController.dispose();
+    priceController.dispose();
+    super.dispose();
+  }
+
+  void showEditDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: Text('${widget.item.name} 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: sharesController,
+              decoration: const InputDecoration(
+                labelText: '보유 수량',
+                hintText: '예: 10',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(
+                labelText: '평균 매수가',
+                hintText: '예: 150.50',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Get.back(),
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              final index = controller.portfolioItems.indexOf(item);
-              if (index != -1) {
-                controller.deletePortfolioItem(index);
+            onPressed: () async {
+              try {
+                final shares = double.parse(sharesController.text);
+                final price = double.parse(priceController.text);
+
+                final updatedItem = PortfolioItem(
+                  id: widget.item.id,
+                  symbol: widget.item.symbol,
+                  name: widget.item.name,
+                  shares: shares,
+                  averagePrice: price,
+                  purchaseDate: widget.item.purchaseDate,
+                );
+
+                await controller.updatePortfolioItem(updatedItem);
                 Get.back();
+                Get.snackbar('성공', '${widget.item.name} 종목이 수정되었습니다');
+              } catch (e) {
+                Get.snackbar('오류', '올바른 숫자를 입력해주세요');
               }
             },
-            child: const Text('삭제'),
+            child: const Text('수정'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showDeleteDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('종목 삭제'),
+        content: Text('${widget.item.name} 종목을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await controller.deletePortfolioItem(widget.item.id!);
+                Get.back();
+                Get.back();
+                Get.snackbar('성공', '${widget.item.name} 종목이 삭제되었습니다');
+              } catch (e) {
+                Get.snackbar('오류', '종목 삭제 중 오류가 발생했습니다');
+              }
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -38,19 +144,21 @@ class PortfolioDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalValue = item.quantity * item.averagePrice;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(item.stock.name),
+        title: Text(widget.item.name),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: showEditDialog,
+          ),
+          IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: () => _showDeleteConfirmation(context),
+            onPressed: showDeleteDialog,
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,11 +169,17 @@ class PortfolioDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('종목코드: ${item.stock.symbol}'),
-                    const SizedBox(height: 8),
-                    Text('거래소: ${item.stock.exchange}'),
-                    const SizedBox(height: 8),
-                    Text('통화: ${item.stock.currency}'),
+                    Text(
+                      '기본 정보',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const Divider(),
+                    _buildInfoRow('종목 심볼', widget.item.symbol),
+                    _buildInfoRow('보유 수량', '${widget.item.shares} 주'),
+                    _buildInfoRow('평균 매수가', '\$${widget.item.averagePrice}'),
+                    _buildInfoRow('총 투자금', '\$${widget.item.totalValue}'),
+                    _buildInfoRow('매수일',
+                        widget.item.purchaseDate.toString().split(' ')[0]),
                   ],
                 ),
               ),
@@ -77,21 +191,58 @@ class PortfolioDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('보유수량: ${item.quantity}주'),
-                    const SizedBox(height: 8),
-                    Text(
-                        '평균단가: ${item.averagePrice.toStringAsFixed(2)} ${item.stock.currency}'),
-                    const SizedBox(height: 8),
-                    Text(
-                        '총 투자금액: ${totalValue.toStringAsFixed(2)} ${item.stock.currency}'),
-                    const SizedBox(height: 8),
-                    Text('매수일: ${item.purchaseDate.toString().split(' ')[0]}'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '배당금 정보',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (isLoadingDividends)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
+                    ),
+                    const Divider(),
+                    if (dividends.isEmpty && !isLoadingDividends)
+                      const Text('배당금 정보가 없습니다.')
+                    else
+                      ...dividends
+                          .map((div) => Column(
+                                children: [
+                                  _buildInfoRow('배당금', '\$${div.amount}'),
+                                  _buildInfoRow('배당률', '${div.dividendYield}%'),
+                                  _buildInfoRow('배당락일',
+                                      div.exDate.toString().split(' ')[0]),
+                                  _buildInfoRow('지급일',
+                                      div.payDate.toString().split(' ')[0]),
+                                  _buildInfoRow('주기', div.frequency),
+                                  if (div != dividends.last) const Divider(),
+                                ],
+                              ))
+                          .toList(),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

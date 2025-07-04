@@ -1,83 +1,158 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:async';
 import '../../controllers/portfolio_controller.dart';
-import '../../models/stock.dart';
 import '../../models/portfolio_item.dart';
-import '../../services/stock_service.dart';
 
 class PortfolioAddScreen extends StatefulWidget {
   const PortfolioAddScreen({super.key});
 
   @override
-  State<PortfolioAddScreen> createState() => _PortfolioAddScreenState();
+  _PortfolioAddScreenState createState() => _PortfolioAddScreenState();
 }
 
 class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _symbolController = TextEditingController();
-  final _quantityController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _stockService = StockService();
-  final _portfolioController = Get.find<PortfolioController>();
+  final PortfolioController controller = Get.find<PortfolioController>();
+  final TextEditingController searchController = TextEditingController();
+  final TextEditingController sharesController = TextEditingController();
+  final TextEditingController priceController = TextEditingController();
 
-  Stock? _selectedStock;
-  DateTime _purchaseDate = DateTime.now();
+  List<PortfolioItem> searchResults = [];
+  bool isSearching = false;
+  bool isAdding = false;
+  Timer? _debounce;
 
   @override
   void dispose() {
-    _symbolController.dispose();
-    _quantityController.dispose();
-    _priceController.dispose();
+    searchController.dispose();
+    sharesController.dispose();
+    priceController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  Future<void> _searchStock() async {
-    final symbol = _symbolController.text.trim().toUpperCase();
-    if (symbol.isEmpty) return;
+  Future<void> searchStocks(String query) async {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isEmpty) {
+        setState(() {
+          searchResults = [];
+          isSearching = false;
+        });
+        return;
+      }
+
+      setState(() => isSearching = true);
+      try {
+        final results = await controller.searchStocks(query);
+        setState(() {
+          searchResults = results;
+          isSearching = false;
+        });
+      } catch (e) {
+        Get.snackbar('오류', '종목 검색 중 오류가 발생했습니다');
+        setState(() => isSearching = false);
+      }
+    });
+  }
+
+  Future<void> addStock(PortfolioItem stock) async {
+    if (isAdding) return; // 중복 추가 방지
 
     try {
-      final stock = await _stockService.getStockInfo(symbol);
-      setState(() {
-        _selectedStock = stock;
-      });
-    } catch (e) {
-      Get.snackbar(
-        '오류',
-        '종목 검색 중 오류가 발생했습니다: $e',
-        snackPosition: SnackPosition.BOTTOM,
+      if (sharesController.text.isEmpty || priceController.text.isEmpty) {
+        Get.snackbar('오류', '모든 필드를 입력해주세요');
+        return;
+      }
+
+      final shares = double.parse(sharesController.text);
+      final price = double.parse(priceController.text);
+
+      if (shares <= 0 || price <= 0) {
+        Get.snackbar('오류', '수량과 가격은 0보다 커야 합니다');
+        return;
+      }
+
+      setState(() => isAdding = true);
+
+      final portfolioItem = PortfolioItem(
+        symbol: stock.symbol,
+        name: stock.name,
+        shares: shares,
+        averagePrice: price,
+        purchaseDate: DateTime.now(),
       );
+
+      await controller.addPortfolioItem(portfolioItem);
+
+      // 먼저 다이얼로그를 닫고
+      Get.back();
+      // 그 다음 종목 추가 화면을 닫음
+      Get.back();
+    } catch (e) {
+      Get.snackbar('오류', '올바른 숫자를 입력해주세요');
+    } finally {
+      setState(() => isAdding = false);
     }
   }
 
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _purchaseDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+  void showAddDialog(PortfolioItem stock) {
+    sharesController.clear();
+    priceController.clear();
+
+    Get.dialog(
+      AlertDialog(
+        title: Text('${stock.name} 추가'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: sharesController,
+              decoration: const InputDecoration(
+                labelText: '보유 수량',
+                hintText: '예: 10',
+                prefixIcon: Icon(Icons.numbers),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              onSubmitted: (_) =>
+                  FocusScope.of(context).nextFocus(), // Enter 키로 다음 필드로 이동
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(
+                labelText: '평균 매수가',
+                hintText: '예: 150.50',
+                prefixIcon: Icon(Icons.attach_money),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              onSubmitted: (_) => addStock(stock), // Enter 키로 저장
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: isAdding ? null : () => addStock(stock),
+            child: isAdding
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('추가'),
+          ),
+        ],
+      ),
+      barrierDismissible: !isAdding, // 저장 중에는 바깥 클릭으로 닫기 방지
     );
-    if (picked != null) {
-      setState(() {
-        _purchaseDate = picked;
-      });
-    }
-  }
-
-  void _addPortfolio() {
-    if (!_formKey.currentState!.validate() || _selectedStock == null) return;
-
-    final quantity = int.parse(_quantityController.text);
-    final price = double.parse(_priceController.text);
-
-    final portfolioItem = PortfolioItem(
-      stock: _selectedStock!,
-      quantity: quantity,
-      averagePrice: price,
-      purchaseDate: _purchaseDate,
-    );
-
-    _portfolioController.addPortfolioItem(portfolioItem);
-    Get.back();
   }
 
   @override
@@ -86,104 +161,75 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
       appBar: AppBar(
         title: const Text('종목 추가'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _symbolController,
-                      decoration: const InputDecoration(
-                        labelText: '종목 심볼',
-                        hintText: '예: AAPL',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '종목 심볼을 입력하세요';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _searchStock,
-                    child: const Text('검색'),
-                  ),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: '종목 검색',
+                hintText: '종목명 또는 심볼을 입력하세요',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          searchController.clear();
+                          searchStocks('');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              if (_selectedStock != null) ...[
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('종목명: ${_selectedStock!.name}'),
-                        Text('거래소: ${_selectedStock!.exchange}'),
-                        Text('통화: ${_selectedStock!.currency}'),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _quantityController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: '수량',
-                    hintText: '보유 수량을 입력하세요',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '수량을 입력하세요';
-                    }
-                    if (int.tryParse(value) == null) {
-                      return '올바른 숫자를 입력하세요';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: '평균단가',
-                    hintText: '매수 평균단가를 입력하세요',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '평균단가를 입력하세요';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return '올바른 숫자를 입력하세요';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('매수일'),
-                  subtitle: Text(_purchaseDate.toString().split(' ')[0]),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: _selectDate,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _addPortfolio,
-                  child: const Text('추가하기'),
-                ),
-              ],
-            ],
+              onChanged: (value) => searchStocks(value),
+            ),
           ),
-        ),
+          Expanded(
+            child: isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : searchResults.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.search,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              searchController.text.isEmpty
+                                  ? '종목을 검색해주세요'
+                                  : '검색 결과가 없습니다',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: searchResults.length,
+                        itemBuilder: (context, index) {
+                          final stock = searchResults[index];
+                          return ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.business),
+                            ),
+                            title: Text(stock.name),
+                            subtitle: Text(stock.symbol),
+                            trailing: const Icon(Icons.add),
+                            onTap: () => showAddDialog(stock),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }
