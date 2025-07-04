@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "477521001950",
+    "project_id": "dividendrad",
+    "storage_bucket": "dividendrad.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477521001950:android:bfb8fa596a53e34275b14f",
+        "android_client_info": {
+          "package_name": "com.example.dividendradar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBv1Qq5WyahkSNew_5-t3A6XTS91a5TEA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
