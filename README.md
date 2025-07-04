@@ -1,3 +1,5 @@
+!! Firebase CLI, Node.js 설치 확인
+
 DividendRadar 구현 단계별 가이드
 
 Phase 1: 프로젝트 초기 설정 및 기본 구조
