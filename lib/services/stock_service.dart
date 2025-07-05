@@ -11,9 +11,9 @@ class StockService {
         '$baseUrl/search',
         queryParameters: {
           'q': query,
-          'quotesCount': 10,
-          'lang': 'en-US',
-          'region': 'US',
+          'quotesCount': 20,
+          'lang': 'ko-KR', // 한국어 설정
+          'region': 'KR', // 한국 리전 설정
         },
       );
 
@@ -21,14 +21,16 @@ class StockService {
         final quotes = response.data['quotes'] as List;
         return quotes
             .where((quote) =>
-                quote['quoteType'] == 'EQUITY' &&
+                // EQUITY(주식)와 ETF 모두 포함
+                (quote['quoteType'] == 'EQUITY' ||
+                    quote['quoteType'] == 'ETF') &&
                 quote['symbol'] != null &&
                 quote['shortname'] != null)
             .map((quote) => Stock(
                   symbol: quote['symbol'],
                   name: quote['shortname'] ?? '',
                   exchange: quote['exchange'] ?? '',
-                  currency: quote['currency'] ?? 'USD',
+                  currency: quote['currency'] ?? 'KRW', // 기본 통화를 KRW로 설정
                   currentPrice: 0.0, // 검색 결과에는 가격이 포함되지 않음
                 ))
             .toList();
@@ -46,6 +48,7 @@ class StockService {
         '$baseUrl/quote',
         queryParameters: {
           'symbols': symbol,
+          'lang': 'ko-KR', // 한국어로 상세 정보 요청
         },
       );
 
@@ -57,7 +60,7 @@ class StockService {
           symbol: quote['symbol'],
           name: quote['shortName'] ?? '',
           exchange: quote['fullExchangeName'] ?? '',
-          currency: quote['currency'] ?? 'USD',
+          currency: quote['currency'] ?? 'KRW', // 기본 통화를 KRW로 설정
           currentPrice: (quote['regularMarketPrice'] ?? 0.0).toDouble(),
         );
       }

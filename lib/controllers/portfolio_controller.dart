@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 class PortfolioController extends GetxController {
   final StockService _stockService = StockService();
   final _firestore = FirebaseFirestore.instance;
-  
+
   final RxList<PortfolioItem> portfolioItems = <PortfolioItem>[].obs;
   final RxBool isLoading = false.obs;
   StreamSubscription<QuerySnapshot>? _portfolioSubscription;
@@ -44,27 +44,26 @@ class PortfolioController extends GetxController {
   void _setupPortfolioListener() {
     try {
       _portfolioSubscription?.cancel();
-      _portfolioSubscription = _firestore
-          .collection('portfolio')
-          .snapshots()
-          .listen((snapshot) {
+      _portfolioSubscription =
+          _firestore.collection('portfolio').snapshots().listen((snapshot) {
         final items = <PortfolioItem>[];
-        
+
         for (var doc in snapshot.docs) {
           try {
             final data = doc.data();
             data['id'] = doc.id;
-            
+
             if (data['purchaseDate'] is Timestamp) {
-              data['purchaseDate'] = (data['purchaseDate'] as Timestamp).toDate();
+              data['purchaseDate'] =
+                  (data['purchaseDate'] as Timestamp).toDate();
             }
-            
+
             items.add(PortfolioItem.fromJson(data));
           } catch (e) {
             print('Error parsing portfolio item: $e');
           }
         }
-        
+
         portfolioItems.value = items;
       }, onError: (error) {
         print('Error in portfolio listener: $error');
@@ -80,11 +79,11 @@ class PortfolioController extends GetxController {
       isLoading.value = true;
       final snapshot = await _firestore.collection('portfolio').get();
       final batch = _firestore.batch();
-      
+
       for (var doc in snapshot.docs) {
         batch.delete(doc.reference);
       }
-      
+
       await batch.commit();
       _showSnackBar('성공', '포트폴리오가 초기화되었습니다');
     } catch (e) {
@@ -104,14 +103,8 @@ class PortfolioController extends GetxController {
         'averagePrice': item.averagePrice,
         'purchaseDate': Timestamp.fromDate(item.purchaseDate),
       };
-      
+
       await _firestore.collection('portfolio').add(data);
-      
-      // 먼저 다이얼로그를 닫고
-      Get.back();
-      // 그 다음 종목 추가 화면을 닫음
-      Get.back();
-      
       _showSnackBar('성공', '${item.name} 종목이 추가되었습니다');
     } catch (e) {
       print('Error adding portfolio item: $e');
@@ -158,13 +151,15 @@ class PortfolioController extends GetxController {
   Future<List<PortfolioItem>> searchStocks(String query) async {
     try {
       final stocks = await _stockService.searchStocks(query);
-      return stocks.map((stock) => PortfolioItem(
-        symbol: stock.symbol,
-        name: stock.name,
-        shares: 0,
-        averagePrice: 0,
-        purchaseDate: DateTime.now(),
-      )).toList();
+      return stocks
+          .map((stock) => PortfolioItem(
+                symbol: stock.symbol,
+                name: stock.name,
+                shares: 0,
+                averagePrice: 0,
+                purchaseDate: DateTime.now(),
+              ))
+          .toList();
     } catch (e) {
       print('Error searching stocks: $e');
       _showSnackBar('오류', '종목 검색 중 오류가 발생했습니다', isError: true);

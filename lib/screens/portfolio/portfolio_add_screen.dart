@@ -84,11 +84,10 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
         purchaseDate: DateTime.now(),
       );
 
-      await controller.addPortfolioItem(portfolioItem);
-
-      // 먼저 다이얼로그를 닫고
+      // 종목 추가 전에 다이얼로그를 닫습니다
       Get.back();
-      // 그 다음 종목 추가 화면을 닫음
+      await controller.addPortfolioItem(portfolioItem);
+      // 종목 추가 화면을 닫습니다
       Get.back();
     } catch (e) {
       Get.snackbar('오류', '올바른 숫자를 입력해주세요');

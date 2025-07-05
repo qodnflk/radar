@@ -54,6 +54,51 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
     super.dispose();
   }
 
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDividendRow(String label, String value,
+      {bool isHighlighted = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void showEditDialog() {
     Get.dialog(
       AlertDialog(
@@ -127,10 +172,11 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
           TextButton(
             onPressed: () async {
               try {
+                // 먼저 다이얼로그를 닫습니다
+                Get.back();
                 await controller.deletePortfolioItem(widget.item.id!);
+                // 상세 화면을 닫습니다
                 Get.back();
-                Get.back();
-                Get.snackbar('성공', '${widget.item.name} 종목이 삭제되었습니다');
               } catch (e) {
                 Get.snackbar('오류', '종목 삭제 중 오류가 발생했습니다');
               }
@@ -158,91 +204,80 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '기본 정보',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const Divider(),
-                    _buildInfoRow('종목 심볼', widget.item.symbol),
-                    _buildInfoRow('보유 수량', '${widget.item.shares} 주'),
-                    _buildInfoRow('평균 매수가', '\$${widget.item.averagePrice}'),
-                    _buildInfoRow('총 투자금', '\$${widget.item.totalValue}'),
-                    _buildInfoRow('매수일',
-                        widget.item.purchaseDate.toString().split(' ')[0]),
-                  ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '기본 정보',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const Divider(),
+                      _buildInfoRow('종목 심볼', widget.item.symbol),
+                      _buildInfoRow('보유 수량', '${widget.item.shares} 주'),
+                      _buildInfoRow('평균 매수가', '\$${widget.item.averagePrice}'),
+                      _buildInfoRow('총 투자금', '\$${widget.item.totalValue}'),
+                      _buildInfoRow('매수일',
+                          widget.item.purchaseDate.toString().split(' ')[0]),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '배당금 정보',
-                          style: Theme.of(context).textTheme.titleLarge,
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '배당금 정보',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const Divider(),
+                      if (isLoadingDividends)
+                        const Center(child: CircularProgressIndicator())
+                      else if (dividends.isEmpty)
+                        const Center(child: Text('배당금 정보가 없습니다.'))
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: dividends.length,
+                          itemBuilder: (context, index) {
+                            final dividend = dividends[index];
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (index > 0) const Divider(),
+                                _buildDividendRow('배당금',
+                                    '\$${dividend.amount.toStringAsFixed(3)}'),
+                                _buildDividendRow('배당률',
+                                    '${(dividend.dividendYield * 100).toStringAsFixed(1)}%'),
+                                _buildDividendRow('배당락일',
+                                    dividend.exDate.toString().split(' ')[0]),
+                                _buildDividendRow('지급일',
+                                    dividend.payDate.toString().split(' ')[0]),
+                                _buildDividendRow('주기', dividend.frequency),
+                              ],
+                            );
+                          },
                         ),
-                        if (isLoadingDividends)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                      ],
-                    ),
-                    const Divider(),
-                    if (dividends.isEmpty && !isLoadingDividends)
-                      const Text('배당금 정보가 없습니다.')
-                    else
-                      ...dividends
-                          .map((div) => Column(
-                                children: [
-                                  _buildInfoRow('배당금', '\$${div.amount}'),
-                                  _buildInfoRow('배당률', '${div.dividendYield}%'),
-                                  _buildInfoRow('배당락일',
-                                      div.exDate.toString().split(' ')[0]),
-                                  _buildInfoRow('지급일',
-                                      div.payDate.toString().split(' ')[0]),
-                                  _buildInfoRow('주기', div.frequency),
-                                  if (div != dividends.last) const Divider(),
-                                ],
-                              ))
-                          .toList(),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }
