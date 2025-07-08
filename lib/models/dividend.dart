@@ -1,28 +1,37 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
 part 'dividend.g.dart';
 
+@HiveType(typeId: 2)
 @JsonSerializable()
 class Dividend {
+  @HiveField(0)
   @JsonKey(name: 'symbol')
   final String symbol;
 
+  @HiveField(1)
   @JsonKey(name: 'amount')
   final double amount;
 
+  @HiveField(2)
   @JsonKey(name: 'currency')
   final String currency;
 
+  @HiveField(3)
   @JsonKey(name: 'exDate')
   final DateTime exDate;
 
+  @HiveField(4)
   @JsonKey(name: 'payDate')
   final DateTime payDate;
 
+  @HiveField(5)
   @JsonKey(name: 'frequency')
   final String frequency;
 
+  @HiveField(6)
   @JsonKey(name: 'dividendYield')
   final double dividendYield;
 

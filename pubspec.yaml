@@ -58,11 +58,9 @@ dependencies:
   printing: ^5.11.1
   
   # 날짜/시간 처리
-  intl: ^0.18.1
+  intl: ^0.18.0
   
-  # 백그라운드 작업 및 알림
-  # workmanager: ^0.5.2
-  # flutter_local_notifications: ^14.1.5  # 더 안정적인 버전으로 다운그레이드
+  # 백그라운드 작업 및 알림 (현재 미사용으로 제거)
   
   # Firebase 관련
   firebase_core: ^2.24.2  # Firebase core

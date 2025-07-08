@@ -1,16 +1,24 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
 part 'portfolio_item.g.dart';
 
+@HiveType(typeId: 0)
 @JsonSerializable()
 class PortfolioItem {
+  @HiveField(0)
   String? id;
 
+  @HiveField(1)
   final String symbol;
+  @HiveField(2)
   final String name;
+  @HiveField(3)
   final double shares;
+  @HiveField(4)
   final double averagePrice;
+  @HiveField(5)
   final DateTime purchaseDate;
 
   PortfolioItem({
