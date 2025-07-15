@@ -328,6 +328,13 @@ class PortfolioListScreen extends StatelessWidget {
         (sum, item) => sum + item.totalValue,
       );
 
+      // 현재 총 가치 계산
+      final totalCurrentValue = controller.totalCurrentValue;
+
+      // 총 손익 계산
+      final totalGainLoss = controller.totalGainLoss;
+      final totalGainLossPercentage = controller.totalGainLossPercentage;
+
       // 예상 연간 배당금 계산
       final expectedDividend =
           dividendController.calculateTotalExpectedDividend(portfolioItems);
@@ -339,127 +346,252 @@ class PortfolioListScreen extends StatelessWidget {
       // 다음 배당 일정
       final upcomingDividends = dividendController.getUpcomingDividends();
 
+      // 통계 데이터 리스트
+      final summaryData = [
+        {
+          'title': '총 투자금',
+          'value': '\$${NumberFormat('#,##0').format(totalInvestment)}',
+          'icon': Icons.account_balance_wallet,
+          'gradientColors': [
+            const Color(0xFF2196F3),
+            const Color(0xFF21CBF3),
+          ],
+        },
+        {
+          'title': '현재 가치',
+          'value': '\$${NumberFormat('#,##0').format(totalCurrentValue)}',
+          'icon': Icons.trending_up,
+          'gradientColors': [
+            const Color(0xFF673AB7),
+            const Color(0xFF9C27B0),
+          ],
+        },
+        {
+          'title': '총 손익',
+          'value':
+              '${totalGainLoss >= 0 ? '+' : ''}\$${NumberFormat('#,##0').format(totalGainLoss)}',
+          'icon':
+              totalGainLoss >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+          'gradientColors': totalGainLoss >= 0
+              ? [
+                  const Color(0xFF4CAF50),
+                  const Color(0xFF66BB6A),
+                ]
+              : [
+                  const Color(0xFFFF5722),
+                  const Color(0xFFFF7043),
+                ],
+        },
+        {
+          'title': '수익률',
+          'value':
+              '${totalGainLossPercentage >= 0 ? '+' : ''}${totalGainLossPercentage.toStringAsFixed(1)}%',
+          'icon': totalGainLossPercentage >= 0
+              ? Icons.trending_up
+              : Icons.trending_down,
+          'gradientColors': totalGainLossPercentage >= 0
+              ? [
+                  const Color(0xFFE91E63),
+                  const Color(0xFFFF4081),
+                ]
+              : [
+                  const Color(0xFFFF5722),
+                  const Color(0xFFFF7043),
+                ],
+        },
+        {
+          'title': '보유 종목',
+          'value': '${portfolioItems.length}개',
+          'icon': Icons.inventory,
+          'gradientColors': [
+            const Color(0xFFFF9800),
+            const Color(0xFFFFB74D),
+          ],
+        },
+        {
+          'title': '예상 연간 배당',
+          'value': '\$${expectedDividend.toStringAsFixed(2)}',
+          'icon': Icons.monetization_on,
+          'gradientColors': [
+            const Color(0xFF00BCD4),
+            const Color(0xFF4DD0E1),
+          ],
+        },
+        {
+          'title': '평균 배당률',
+          'value': '${(averageYield * 100).toStringAsFixed(1)}%',
+          'icon': Icons.trending_up,
+          'gradientColors': [
+            const Color(0xFF9C27B0),
+            const Color(0xFFBA68C8),
+          ],
+        },
+      ];
+
       return Container(
         margin: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 기본 통계 카드
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // 포트폴리오 요약 헤더
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 20),
+              child: Text(
+                '포트폴리오 요약',
+                style: Theme.of(Get.context!).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1A237E),
+                    ),
+              ),
+            ),
+            // 모던한 Horizontal Scroll 카드들
+            SizedBox(
+              height: 130,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: summaryData.length,
+                itemBuilder: (context, index) {
+                  final data = summaryData[index];
+                  return Container(
+                    width: 140,
+                    margin: EdgeInsets.only(
+                      right: index < summaryData.length - 1 ? 16 : 0,
+                    ),
+                    child: _buildModernSummaryCard(
+                      data['title'] as String,
+                      data['value'] as String,
+                      data['icon'] as IconData,
+                      data['gradientColors'] as List<Color>,
+                      index,
+                    ),
+                  );
+                },
+              ),
+            ),
+            // 마지막 가격 업데이트 시간 표시
+            if (controller.lastPriceUpdate.value.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    const Icon(
+                      Icons.schedule,
+                      size: 14,
+                      color: AppTheme.primaryNavy,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
-                      '포트폴리오 요약',
-                      style:
-                          Theme.of(Get.context!).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSummaryItem(
-                            '총 투자금',
-                            '\$${NumberFormat('#,##0').format(totalInvestment)}',
-                            Icons.account_balance_wallet,
-                            Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildSummaryItem(
-                            '보유 종목',
-                            '${portfolioItems.length}개',
-                            Icons.inventory,
-                            Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSummaryItem(
-                            '예상 연간 배당',
-                            '\$${expectedDividend.toStringAsFixed(2)}',
-                            Icons.monetization_on,
-                            Colors.green,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildSummaryItem(
-                            '평균 배당률',
-                            '${(averageYield * 100).toStringAsFixed(1)}%',
-                            Icons.trending_up,
-                            Colors.purple,
-                          ),
-                        ),
-                      ],
+                      '마지막 가격 업데이트: ${controller.lastPriceUpdate.value}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryNavy,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
             // 다음 배당 일정 카드
             if (upcomingDividends.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.schedule, color: Colors.blue.shade600),
-                          const SizedBox(width: 8),
-                          Text(
-                            '다가오는 배당 일정',
-                            style: Theme.of(Get.context!)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
+              Container(
+                margin: const EdgeInsets.only(top: 24),
+                child: Card(
+                  elevation: 6,
+                  shadowColor: Colors.black.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Colors.white,
+                          Color(0xFFF8F9FF),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(height: 12),
-                      ...upcomingDividends.take(3).map((entry) {
-                        final daysUntil =
-                            entry.value.difference(DateTime.now()).inDays;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Text(entry.key,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500)),
-                              Text(
-                                '${DateFormat('MM/dd').format(entry.value)} ($daysUntil일 후)',
-                                style: TextStyle(color: Colors.grey.shade600),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF1A237E),
+                                      Color(0xFF3F51B5),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.calendar_today,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                '다음 배당 일정',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A237E),
+                                ),
                               ),
                             ],
                           ),
-                        );
-                      }).toList(),
-                      if (upcomingDividends.length > 3)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '외 ${upcomingDividends.length - 3}개 더...',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
+                          const SizedBox(height: 16),
+                          ...upcomingDividends.take(3).map((entry) {
+                            final daysUntil =
+                                entry.value.difference(DateTime.now()).inDays;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(entry.key,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500)),
+                                  Text(
+                                    '${DateFormat('MM/dd').format(entry.value)} ($daysUntil일 후)',
+                                    style:
+                                        TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          if (upcomingDividends.length > 3)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '외 ${upcomingDividends.length - 3}개 더...',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -469,39 +601,68 @@ class PortfolioListScreen extends StatelessWidget {
     });
   }
 
-  Widget _buildSummaryItem(
-      String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
+  Widget _buildModernSummaryCard(String title, String value, IconData icon,
+      List<Color> gradientColors, int index) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          // BoxShadow(
+          //   color: gradientColors[0].withValues(alpha: 0.3),
+          //   blurRadius: 15,
+          //   offset: const Offset(0, 8),
+          // ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: color.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          // 아이콘 컨테이너
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
+          // 타이틀
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          // 값
           Text(
             value,
-            style: TextStyle(
-              fontSize: 16,
+            style: const TextStyle(
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -561,16 +722,34 @@ class PortfolioListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('포트폴리오'),
         actions: [
+          // 실시간 가격 업데이트 버튼
+          Obx(() => IconButton(
+                icon: controller.isPriceUpdating.value
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.refresh),
+                onPressed: controller.isPriceUpdating.value
+                    ? null
+                    : controller.manualPriceUpdate,
+                tooltip: '가격 업데이트',
+              )),
           IconButton(
             icon: const Icon(Icons.analytics),
             onPressed: () => Get.to(() => const AnalysisScreen()),
             tooltip: '포트폴리오 분석',
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _showClearConfirmDialog,
-            tooltip: '포트폴리오 초기화',
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.delete_outline),
+          //   onPressed: _showClearConfirmDialog,
+          //   tooltip: '포트폴리오 초기화',
+          // ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => Get.to(() => const PortfolioAddScreen()),

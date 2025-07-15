@@ -19,11 +19,14 @@ class PortfolioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentValue = item.totalValue;
-    final investedAmount = item.shares * item.averagePrice;
-    final profitLoss = currentValue - investedAmount;
-    final profitLossPercentage = (profitLoss / investedAmount) * 100;
+    // 실시간 가격 기반 계산
+    final currentPrice = item.currentPrice ?? item.averagePrice;
+    final currentValue = item.currentTotalValue;
+    final investedAmount = item.totalValue;
+    final profitLoss = item.gainLoss;
+    final profitLossPercentage = item.gainLossPercentage;
     final isProfit = profitLoss >= 0;
+    final hasRealTimePrice = item.hasCurrentPrice;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -136,15 +139,42 @@ class PortfolioCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '포트폴리오 가치',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondary,
-                                    fontWeight: FontWeight.w500,
+                            Row(
+                              children: [
+                                Text(
+                                  '포트폴리오 가치',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium
+                                      ?.copyWith(
+                                        color: AppTheme.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                ),
+                                const SizedBox(width: 6),
+                                // 실시간 가격 업데이트 상태 표시
+                                if (hasRealTimePrice)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.portfolioProfit
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'LIVE',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: AppColors.portfolioProfit,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                    ),
                                   ),
+                              ],
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -170,7 +200,8 @@ class PortfolioCard extends StatelessWidget {
                                         ),
                                   ),
                                   TextSpan(
-                                    text: ' 주',
+                                    text:
+                                        ' 주 × \$${NumberFormat('#,##0.00').format(currentPrice)}',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall

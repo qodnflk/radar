@@ -20,6 +20,8 @@ class PortfolioItem {
   final double averagePrice;
   @HiveField(5)
   final DateTime purchaseDate;
+  @HiveField(6)
+  double? currentPrice; // 현재 가격 추가
 
   PortfolioItem({
     this.id,
@@ -28,6 +30,7 @@ class PortfolioItem {
     required this.shares,
     required this.averagePrice,
     required this.purchaseDate,
+    this.currentPrice,
   });
 
   factory PortfolioItem.fromJson(Map<String, dynamic> json) {
@@ -43,6 +46,7 @@ class PortfolioItem {
       final double shares = (json['shares'] as num?)?.toDouble() ?? 0.0;
       final double averagePrice =
           (json['averagePrice'] as num?)?.toDouble() ?? 0.0;
+      final double? currentPrice = (json['currentPrice'] as num?)?.toDouble();
 
       // 날짜 처리
       DateTime purchaseDate;
@@ -62,6 +66,7 @@ class PortfolioItem {
         shares: shares,
         averagePrice: averagePrice,
         purchaseDate: purchaseDate,
+        currentPrice: currentPrice,
       );
     } catch (e) {
       print('Error parsing PortfolioItem: $e');
@@ -77,6 +82,7 @@ class PortfolioItem {
         'shares': shares,
         'averagePrice': averagePrice,
         'purchaseDate': Timestamp.fromDate(purchaseDate),
+        'currentPrice': currentPrice,
       };
     } catch (e) {
       print('Error converting PortfolioItem to JSON: $e');
@@ -84,10 +90,52 @@ class PortfolioItem {
     }
   }
 
+  // 기존 매입 기준 총액 (변경 없음)
   double get totalValue => shares * averagePrice;
+
+  // 현재 시가 총액
+  double get currentTotalValue => (currentPrice ?? averagePrice) * shares;
+
+  // 손익 계산
+  double get gainLoss => currentTotalValue - totalValue;
+
+  // 수익률 계산
+  double get gainLossPercentage =>
+      totalValue > 0 ? (gainLoss / totalValue) * 100 : 0;
+
+  // 현재 가격이 있는지 확인
+  bool get hasCurrentPrice => currentPrice != null;
+
+  // 손익 상태 (수익/손실/변동없음)
+  String get gainLossStatus {
+    if (gainLoss > 0) return 'profit';
+    if (gainLoss < 0) return 'loss';
+    return 'neutral';
+  }
+
+  // PortfolioItem 복사 (currentPrice 업데이트용)
+  PortfolioItem copyWith({
+    String? id,
+    String? symbol,
+    String? name,
+    double? shares,
+    double? averagePrice,
+    DateTime? purchaseDate,
+    double? currentPrice,
+  }) {
+    return PortfolioItem(
+      id: id ?? this.id,
+      symbol: symbol ?? this.symbol,
+      name: name ?? this.name,
+      shares: shares ?? this.shares,
+      averagePrice: averagePrice ?? this.averagePrice,
+      purchaseDate: purchaseDate ?? this.purchaseDate,
+      currentPrice: currentPrice ?? this.currentPrice,
+    );
+  }
 
   @override
   String toString() {
-    return 'PortfolioItem(id: $id, symbol: $symbol, name: $name, shares: $shares, averagePrice: $averagePrice)';
+    return 'PortfolioItem(id: $id, symbol: $symbol, name: $name, shares: $shares, averagePrice: $averagePrice, currentPrice: $currentPrice)';
   }
 }

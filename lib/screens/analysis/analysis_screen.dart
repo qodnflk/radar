@@ -6,6 +6,27 @@ import '../../controllers/analysis_controller.dart';
 import '../../controllers/portfolio_controller.dart';
 import '../../theme/app_theme.dart';
 
+// 말풍선 꼬리를 그리는 CustomPainter
+class BubbleTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFFFF3E0)
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, 10)
+      ..lineTo(8, 0)
+      ..lineTo(16, 10)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
 
@@ -19,6 +40,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       Get.find<PortfolioController>();
 
   int? touchedIndex; // 터치된 섹션의 인덱스를 저장
+  bool _showTaxInfo = false; // 세금 계산 기준 팝업 표시 여부
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +48,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       appBar: AppBar(
         title: const Text('포트폴리오 분석'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => analysisController.refreshAnalysisData(),
-            tooltip: '데이터 새로고침',
-          ),
-        ],
       ),
       backgroundColor: AppTheme.backgroundLight,
       body: Obx(() {
@@ -67,7 +82,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 기본 통계 요약
-              _buildStatsSummary(),
+              _buildDividendTaxCalculator(),
               const SizedBox(height: 24),
 
               // 월별 배당금 분포 차트
@@ -87,109 +102,342 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  Widget _buildStatsSummary() {
+  Widget _buildDividendTaxCalculator() {
     return Card(
-      child: Padding(
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [
+              Colors.white,
+              Color(0xFFF8F9FF),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '포트폴리오 요약',
-              style: Get.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // 4개의 StatCard를 2x2 그리드로 배치하되, 더 넉넉한 크기로 조정
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 20,
-              childAspectRatio: 2.5, // 높이를 훨씬 더 넉넉하게 조정
+            // 헤더
+            Row(
               children: [
-                _buildStatCard(
-                  '총 투자금',
-                  '\$${NumberFormat('#,##0.00').format(analysisController.totalInvestment)}',
-                  Icons.account_balance_wallet,
-                  AppColors.portfolioValue,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF1A237E),
+                        Color(0xFF3F51B5),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.calculate,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                _buildStatCard(
-                  '예상 연간 배당',
-                  '\$${analysisController.expectedAnnualDividend.toStringAsFixed(2)}',
-                  Icons.monetization_on,
-                  AppColors.dividendIncome,
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    '배당금 세금 계산기',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
                 ),
-                _buildStatCard(
-                  '평균 배당률',
-                  '${(analysisController.averageDividendYield * 100).toStringAsFixed(1)}%',
-                  Icons.trending_up,
-                  AppTheme.successGreen,
-                ),
-                _buildStatCard(
-                  '다양성 점수',
-                  '${analysisController.diversityScore.toStringAsFixed(0)}점',
-                  Icons.diversity_3,
-                  AppTheme.primaryNavyLight,
+                // 정보 아이콘 버튼
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showTaxInfo = !_showTaxInfo;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF1A237E),
+                      size: 20,
+                    ),
+                  ),
                 ),
               ],
             ),
+            // 말풍선 팝업 (세금 계산 기준)
+            if (_showTaxInfo)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFF9800).withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // 말풍선 꼬리
+                    Positioned(
+                      top: -8,
+                      right: 24,
+                      child: CustomPaint(
+                        painter: BubbleTailPainter(),
+                      ),
+                    ),
+                    // 내용
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info,
+                              color: Color(0xFFFF9800),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '세금 계산 기준',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF9800),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          '• 미국 주식: 한미 조세협정 적용 15% 원천징수\n• 한국 세금: 연간 2,000만원 이하 분리과세 14% 적용\n• 실제 세금은 개인 소득 상황에 따라 달라질 수 있습니다.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF795548),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
+
+            // 자동 계산 버튼
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 20),
+              child: ElevatedButton.icon(
+                onPressed: _calculateFromPortfolio,
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('포트폴리오 기준 자동 계산'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A237E),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+
+            // 계산 결과 표시
+            _buildTaxCalculationResults(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20), // 패딩을 더 넉넉하게
+  Widget _buildTaxCalculationResults() {
+    final expectedDividend = analysisController.expectedAnnualDividend;
+
+    // 세금 계산 (미국 주식 기준)
+    final usTax = expectedDividend * 0.15; // 한미 조세협정 적용 15%
+    final koreanTax = _calculateKoreanTax(expectedDividend - usTax);
+    final totalTax = usTax + koreanTax;
+    final afterTaxDividend = expectedDividend - totalTax;
+
+    final taxData = [
+      {
+        'title': '예상 연간 배당금',
+        'value': '\$${expectedDividend.toStringAsFixed(2)}',
+        'icon': Icons.monetization_on,
+        'gradientColors': [
+          const Color(0xFF4CAF50),
+          const Color(0xFF66BB6A),
+        ],
+      },
+      {
+        'title': '미국 원천징수세 (15%)',
+        'value': '\$${usTax.toStringAsFixed(2)}',
+        'icon': Icons.remove_circle,
+        'gradientColors': [
+          const Color(0xFFFF5722),
+          const Color(0xFFFF7043),
+        ],
+      },
+      {
+        'title': '한국 배당소득세',
+        'value': '\$${koreanTax.toStringAsFixed(2)}',
+        'icon': Icons.account_balance,
+        'gradientColors': [
+          const Color(0xFFFF9800),
+          const Color(0xFFFFB74D),
+        ],
+      },
+      {
+        'title': '세후 실수령액',
+        'value': '\$${afterTaxDividend.toStringAsFixed(2)}',
+        'icon': Icons.account_balance_wallet,
+        'gradientColors': [
+          const Color(0xFF2196F3),
+          const Color(0xFF21CBF3),
+        ],
+      },
+    ];
+
+    return Column(
+      children: [
+        // 세금 계산 결과 카드들
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 1.1, // 1.3에서 1.1로 줄여서 오버플로우 해결
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          itemCount: taxData.length,
+          itemBuilder: (context, index) {
+            final data = taxData[index];
+            return _buildModernSummaryCard(
+              data['title'] as String,
+              data['value'] as String,
+              data['icon'] as IconData,
+              data['gradientColors'] as List<Color>,
+              index,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // 한국 배당소득세 계산 (간단한 추정)
+  double _calculateKoreanTax(double dividendIncome) {
+    // USD를 KRW로 환산 (대략적인 환율 1,300원 적용)
+    final dividendKRW = dividendIncome * 1300;
+
+    // 연간 2,000만원 이하는 분리과세 14%
+    if (dividendKRW <= 20000000) {
+      return (dividendKRW * 0.14) / 1300; // 다시 USD로 환산
+    } else {
+      // 2,000만원 초과시 종합과세 (최대 45%로 추정)
+      return (dividendKRW * 0.30) / 1300; // 다시 USD로 환산
+    }
+  }
+
+  void _calculateFromPortfolio() {
+    // 포트폴리오 기준 자동 계산 완료 스낵바
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('포트폴리오 기준으로 세금이 자동 계산되었습니다'),
+        backgroundColor: Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildModernSummaryCard(String title, String value, IconData icon,
+      List<Color> gradientColors, int index) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      padding: const EdgeInsets.all(12), // 16에서 12로 줄임
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 18), // 아이콘 크기 더 줄임
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11, // 제목 폰트 크기 더 줄임
-                    color: color.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          // 아이콘 컨테이너
+          Container(
+            padding: const EdgeInsets.all(8), // 10에서 8로 줄임
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 24, // 28에서 24로 줄임
+            ),
           ),
-          const SizedBox(height: 12), // 간격을 더 넉넉하게
+          const SizedBox(height: 6), // 8에서 6으로 줄임
+          // 타이틀
           Flexible(
-            // Expanded 대신 Flexible 사용
-            child: Center(
-              // 센터로 정렬
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14, // 값 폰트 크기 더 줄임
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12, // 13에서 12로 줄임
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.5,
               ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 값
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16, // 18에서 16으로 줄임
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -415,12 +663,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                       width: 100,
                                       height: 100,
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.9),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.9),
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.1),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.1),
                                             blurRadius: 8,
                                             offset: const Offset(0, 2),
                                           ),
@@ -505,7 +754,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                       height: 80,
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade50
-                                            .withOpacity(0.8),
+                                            .withValues(alpha: 0.8),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Column(
@@ -582,13 +831,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isTouched
-                              ? colors[index % colors.length].withOpacity(0.1)
+                              ? colors[index % colors.length]
+                                  .withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           border: isTouched
                               ? Border.all(
                                   color: colors[index % colors.length]
-                                      .withOpacity(0.3))
+                                      .withValues(alpha: 0.3))
                               : null,
                         ),
                         child: Row(

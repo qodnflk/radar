@@ -23,13 +23,14 @@ class PortfolioItemAdapter extends TypeAdapter<PortfolioItem> {
       shares: fields[3] as double,
       averagePrice: fields[4] as double,
       purchaseDate: fields[5] as DateTime,
+      currentPrice: fields[6] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PortfolioItem obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class PortfolioItemAdapter extends TypeAdapter<PortfolioItem> {
       ..writeByte(4)
       ..write(obj.averagePrice)
       ..writeByte(5)
-      ..write(obj.purchaseDate);
+      ..write(obj.purchaseDate)
+      ..writeByte(6)
+      ..write(obj.currentPrice);
   }
 
   @override
@@ -67,6 +70,7 @@ PortfolioItem _$PortfolioItemFromJson(Map<String, dynamic> json) =>
       shares: (json['shares'] as num).toDouble(),
       averagePrice: (json['averagePrice'] as num).toDouble(),
       purchaseDate: DateTime.parse(json['purchaseDate'] as String),
+      currentPrice: (json['currentPrice'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$PortfolioItemToJson(PortfolioItem instance) =>
@@ -77,4 +81,5 @@ Map<String, dynamic> _$PortfolioItemToJson(PortfolioItem instance) =>
       'shares': instance.shares,
       'averagePrice': instance.averagePrice,
       'purchaseDate': instance.purchaseDate.toIso8601String(),
+      'currentPrice': instance.currentPrice,
     };

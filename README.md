@@ -60,18 +60,17 @@ Phase 5: 배포 준비
 
 -------25.7.8~9-----------
 <시스템> 
-    1.포트폴리오 페이지에서 초기화시 body부분 Center에 circularprogressindicator로만 계속 돌아가는 문제 개선  
-      -종목을 추가해도 똑같이 circularprogressindicator만 계속 돌아감 
-      -새로고침 기능도 작동 x
-    2.포트폴리오 종목Card 부분의 "손익"부분 제대로 작동하는지 확인
+    1.포트폴리오 페이지에서 초기화시 body부분 Center에 circularprogressindicator로만 계속 돌아가는 문제 개선  O
+      -종목을 추가해도 똑같이 circularprogressindicator만 계속 돌아감  O
+      -새로고침 기능도 작동 x  O
+    2.포트폴리오 종목Card 부분의 "손익"부분 제대로 작동하는지 확인 O
     
 
 
 <디자인>
    1.showDialog 디자인 개선
    2.그래프 페이지 (포트폴리오 분석 크기 조정)
-   3.포트폴리오 분석 페이지에서 "포트폴리오 요약"부분 GridView 크기조절 개선필요
-   4.포트폴리오 페이지 "포트폴리오 요약"부분 UI개선
+   3.포트폴리오 페이지 "포트폴리오 요약"부분 UI개선 O
    5.배당금 정보 부분 UI개선 
 
 

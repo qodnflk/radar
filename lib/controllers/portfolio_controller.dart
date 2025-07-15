@@ -22,7 +22,10 @@ class PortfolioController extends GetxController {
   final RxList<PortfolioItem> portfolioItems = <PortfolioItem>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isOnline = true.obs;
+  final RxBool isPriceUpdating = false.obs;
   StreamSubscription<QuerySnapshot>? _portfolioSubscription;
+  Timer? _priceUpdateTimer;
+  final RxString lastPriceUpdate = ''.obs;
 
   void _showSnackBar(String title, String message, {bool isError = false}) {
     Get.closeAllSnackbars();
@@ -44,6 +47,7 @@ class PortfolioController extends GetxController {
     super.onInit();
     _loadInitialData();
     _setupPortfolioListener();
+    _startRealTimePriceUpdates();
   }
 
   @override
@@ -51,6 +55,10 @@ class PortfolioController extends GetxController {
     // 메모리 누수 방지를 위한 리소스 정리
     _portfolioSubscription?.cancel();
     _portfolioSubscription = null;
+
+    // 실시간 가격 업데이트 타이머 정리
+    _priceUpdateTimer?.cancel();
+    _priceUpdateTimer = null;
 
     // 대용량 리스트 정리
     portfolioItems.clear();
@@ -559,5 +567,108 @@ class PortfolioController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// 실시간 가격 업데이트 시작
+  void _startRealTimePriceUpdates() {
+    // 기존 타이머가 있다면 취소
+    _priceUpdateTimer?.cancel();
+
+    // 30초마다 가격 업데이트 (주식 시장 시간 고려)
+    _priceUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (portfolioItems.isNotEmpty) {
+        _updateAllPrices();
+      }
+    });
+
+    // 초기 가격 업데이트
+    if (portfolioItems.isNotEmpty) {
+      _updateAllPrices();
+    }
+  }
+
+  /// 실시간 가격 업데이트 정지
+  void stopRealTimePriceUpdates() {
+    _priceUpdateTimer?.cancel();
+    _priceUpdateTimer = null;
+    isPriceUpdating.value = false;
+  }
+
+  /// 모든 포트폴리오 아이템의 가격 업데이트
+  Future<void> _updateAllPrices() async {
+    if (isPriceUpdating.value) return; // 이미 업데이트 중이면 중복 실행 방지
+
+    try {
+      isPriceUpdating.value = true;
+
+      // 병렬로 가격 업데이트 (성능 향상)
+      final futures =
+          portfolioItems.map((item) => _updateSinglePrice(item)).toList();
+      await Future.wait(futures);
+
+      // 마지막 업데이트 시간 기록
+      lastPriceUpdate.value = DateTime.now().toString().substring(11, 19);
+    } catch (e) {
+      print('Error updating prices: $e');
+    } finally {
+      isPriceUpdating.value = false;
+    }
+  }
+
+  /// 개별 아이템의 가격 업데이트
+  Future<void> _updateSinglePrice(PortfolioItem item) async {
+    try {
+      final stock = await stockService.getStockDetails(item.symbol);
+      if (stock != null && stock.currentPrice > 0) {
+        // 기존 아이템을 새로운 가격으로 업데이트
+        final index = portfolioItems.indexWhere((p) => p.symbol == item.symbol);
+        if (index != -1) {
+          portfolioItems[index] =
+              item.copyWith(currentPrice: stock.currentPrice);
+        }
+      }
+    } catch (e) {
+      print('Error updating price for ${item.symbol}: $e');
+    }
+  }
+
+  /// 수동 가격 업데이트 (새로고침 버튼용)
+  Future<void> manualPriceUpdate() async {
+    if (portfolioItems.isEmpty) {
+      _showSnackBar('알림', '포트폴리오가 비어있습니다');
+      return;
+    }
+
+    _showSnackBar('알림', '가격 업데이트 중...');
+    await _updateAllPrices();
+    _showSnackBar('성공', '가격 업데이트가 완료되었습니다');
+  }
+
+  /// 포트폴리오 전체 현재 가치 계산
+  double get totalCurrentValue {
+    return portfolioItems.fold(
+        0.0, (sum, item) => sum + item.currentTotalValue);
+  }
+
+  /// 포트폴리오 전체 손익 계산
+  double get totalGainLoss {
+    return portfolioItems.fold(0.0, (sum, item) => sum + item.gainLoss);
+  }
+
+  /// 포트폴리오 전체 수익률 계산
+  double get totalGainLossPercentage {
+    final totalInvestment =
+        portfolioItems.fold(0.0, (sum, item) => sum + item.totalValue);
+    return totalInvestment > 0 ? (totalGainLoss / totalInvestment) * 100 : 0;
+  }
+
+  /// 가격 업데이트 상태 확인
+  bool get hasRecentPriceUpdate {
+    if (lastPriceUpdate.value.isEmpty) return false;
+    // 5분 이내 업데이트가 있었는지 확인
+    final now = DateTime.now();
+    final lastUpdate = DateTime.parse(
+        "${now.toString().substring(0, 11)}${lastPriceUpdate.value}");
+    return now.difference(lastUpdate).inMinutes < 5;
   }
 }
