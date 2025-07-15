@@ -18,25 +18,134 @@ class PortfolioListScreen extends StatelessWidget {
 
   void _showClearConfirmDialog() {
     Get.dialog(
-      AlertDialog(
-        title: const Text('포트폴리오 초기화'),
-        content: const Text('정말로 포트폴리오를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              controller.clearPortfolio();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 10,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Colors.white, Color(0xFFF8F9FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: const Text('초기화'),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 아이콘
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF5722), Color(0xFFFF7043)],
+                  ),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: const Icon(
+                  Icons.warning_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 제목
+              const Text(
+                '포트폴리오 초기화',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A237E),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 내용
+              const Text(
+                '정말로 포트폴리오를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF757575),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 버튼들
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                      ),
+                      child: TextButton(
+                        onPressed: () => Get.back(),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF5722), Color(0xFFFF7043)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFFFF5722).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextButton(
+                        onPressed: () {
+                          Get.back();
+                          controller.clearPortfolio();
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '초기화',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -53,12 +162,20 @@ class PortfolioListScreen extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
-          elevation: 8,
+          elevation: 10,
           child: Container(
             width: 400,
             padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Colors.white, Color(0xFFF8F9FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,14 +184,16 @@ class PortfolioListScreen extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Icons.edit,
-                        color: Color(0xFF1A237E),
+                        Icons.edit_rounded,
+                        color: Colors.white,
                         size: 24,
                       ),
                     ),
@@ -111,20 +230,32 @@ class PortfolioListScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB300).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFFFB300).withValues(alpha: 0.1),
+                        const Color(0xFFFFB300).withValues(alpha: 0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFFB300).withOpacity(0.3),
+                      color: const Color(0xFFFFB300).withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.label,
-                        color: Color(0xFFFFB300),
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFB300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.label,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Text(
                         '종목 심볼: ${item.symbol}',
                         style: const TextStyle(
@@ -144,9 +275,11 @@ class PortfolioListScreen extends StatelessWidget {
                   decoration: InputDecoration(
                     labelText: '보유 수량',
                     hintText: '예: 10',
-                    prefixIcon: const Icon(Icons.numbers),
+                    prefixIcon:
+                        const Icon(Icons.numbers, color: Color(0xFF1A237E)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -168,9 +301,11 @@ class PortfolioListScreen extends StatelessWidget {
                   decoration: InputDecoration(
                     labelText: '평균 매수가 (USD)',
                     hintText: '예: 150.50',
-                    prefixIcon: const Icon(Icons.attach_money),
+                    prefixIcon: const Icon(Icons.attach_money,
+                        color: Color(0xFF1A237E)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -189,98 +324,124 @@ class PortfolioListScreen extends StatelessWidget {
 
                 // 액션 버튼들
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: () {
-                        sharesController.dispose();
-                        priceController.dispose();
-                        Navigator.of(dialogContext).pop();
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0E0E0)),
                         ),
-                      ),
-                      child: const Text(
-                        '취소',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        child: TextButton(
+                          onPressed: () {
+                            sharesController.dispose();
+                            priceController.dispose();
+                            Navigator.of(dialogContext).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF757575),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          final shares = double.parse(sharesController.text);
-                          final price = double.parse(priceController.text);
-
-                          final updatedItem = PortfolioItem(
-                            id: item.id,
-                            symbol: item.symbol,
-                            name: item.name,
-                            shares: shares,
-                            averagePrice: price,
-                            purchaseDate: item.purchaseDate,
-                          );
-
-                          // 수정 실행
-                          await controller.updatePortfolioItem(updatedItem);
-
-                          // 다이얼로그 닫기
-                          sharesController.dispose();
-                          priceController.dispose();
-                          Navigator.of(dialogContext).pop();
-
-                          // 성공 메시지
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${item.name} 종목이 수정되었습니다'),
-                              backgroundColor: const Color(0xFF2E7D32),
-                              behavior: SnackBarBehavior.floating,
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1A237E)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
                             ),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('올바른 숫자를 입력해주세요'),
-                              backgroundColor: Colors.red,
-                              behavior: SnackBarBehavior.floating,
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              final shares =
+                                  double.parse(sharesController.text);
+                              final price = double.parse(priceController.text);
+
+                              final updatedItem = PortfolioItem(
+                                id: item.id,
+                                symbol: item.symbol,
+                                name: item.name,
+                                shares: shares,
+                                averagePrice: price,
+                                purchaseDate: item.purchaseDate,
+                              );
+
+                              // 수정 실행
+                              await controller.updatePortfolioItem(updatedItem);
+
+                              // 다이얼로그 닫기
+                              sharesController.dispose();
+                              priceController.dispose();
+                              Navigator.of(dialogContext).pop();
+
+                              // 성공 메시지
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${item.name} 종목이 수정되었습니다'),
+                                  backgroundColor: const Color(0xFF2E7D32),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('올바른 숫자를 입력해주세요'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A237E),
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shadowColor: const Color(0xFF1A237E).withOpacity(0.3),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                      child:
-                          const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(
-                          Icons.save,
-                          size: 18,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          '저장',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.save,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                '저장',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ]),
+                      ),
                     ),
                   ],
                 ),
@@ -294,25 +455,140 @@ class PortfolioListScreen extends StatelessWidget {
 
   void _showDeleteConfirmDialog(PortfolioItem item) {
     Get.dialog(
-      AlertDialog(
-        title: const Text('종목 삭제'),
-        content: Text('${item.name} 종목을 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              controller.deletePortfolioItem(item.id ?? item.symbol);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 10,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Colors.white, Color(0xFFF8F9FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: const Text('삭제'),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 아이콘
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF5722), Color(0xFFFF7043)],
+                  ),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: const Icon(
+                  Icons.delete_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 제목
+              const Text(
+                '종목 삭제',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A237E),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 내용
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 60),
+                child: Text(
+                  '${item.name} 종목을 삭제하시겠습니까?',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF757575),
+                    height: 1.4,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 버튼들
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                      ),
+                      child: TextButton(
+                        onPressed: () => Get.back(),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF5722), Color(0xFFFF7043)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFFFF5722).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextButton(
+                        onPressed: () {
+                          Get.back();
+                          controller
+                              .deletePortfolioItem(item.id ?? item.symbol);
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '삭제',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -613,18 +889,6 @@ class PortfolioListScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          // BoxShadow(
-          //   color: gradientColors[0].withValues(alpha: 0.3),
-          //   blurRadius: 15,
-          //   offset: const Offset(0, 8),
-          // ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -938,83 +1202,238 @@ class PortfolioListScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text('${item.name} 수정'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: sharesController,
-                decoration: const InputDecoration(
-                  labelText: '보유 수량',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: '평균 매수가 (USD)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                sharesController.dispose();
-                priceController.dispose();
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('취소'),
+        return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final shares = double.parse(sharesController.text);
-                  final price = double.parse(priceController.text);
-
-                  final updatedItem = PortfolioItem(
-                    id: item.id,
-                    symbol: item.symbol,
-                    name: item.name,
-                    shares: shares,
-                    averagePrice: price,
-                    purchaseDate: item.purchaseDate,
-                  );
-
-                  await controller.updatePortfolioItem(updatedItem);
-
-                  sharesController.dispose();
-                  priceController.dispose();
-
-                  if (context.mounted) {
-                    Navigator.of(dialogContext).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${item.name} 종목이 수정되었습니다'),
-                        backgroundColor: Colors.green,
+            elevation: 10,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [Colors.white, Color(0xFFF8F9FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 아이콘
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                        ),
+                        borderRadius: BorderRadius.circular(50),
                       ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('올바른 숫자를 입력해주세요'),
-                        backgroundColor: Colors.red,
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white,
+                        size: 32,
                       ),
-                    );
-                  }
-                }
-              },
-              child: const Text('저장'),
-            ),
-          ],
-        );
+                    ),
+                    const SizedBox(height: 20),
+                    // 제목
+                    const Text(
+                      '종목 정보 수정',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A237E),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 종목명
+                    Flexible(
+                      child: Text(
+                        item.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF757575),
+                          height: 1.4,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // 입력 필드들
+                    TextField(
+                      controller: sharesController,
+                      decoration: InputDecoration(
+                        labelText: '보유 수량',
+                        prefixIcon:
+                            const Icon(Icons.numbers, color: Color(0xFF1A237E)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF1A237E), width: 2),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFFAFAFA),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: priceController,
+                      decoration: InputDecoration(
+                        labelText: '평균 매수가 (USD)',
+                        prefixIcon: const Icon(Icons.attach_money,
+                            color: Color(0xFF1A237E)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF1A237E), width: 2),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFFAFAFA),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 24),
+                    // 버튼들
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFFE0E0E0)),
+                            ),
+                            child: TextButton(
+                              onPressed: () {
+                                sharesController.dispose();
+                                priceController.dispose();
+                                Navigator.of(dialogContext).pop();
+                              },
+                              style: TextButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                '취소',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF757575),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF1A237E)
+                                      .withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                try {
+                                  final shares =
+                                      double.parse(sharesController.text);
+                                  final price =
+                                      double.parse(priceController.text);
+
+                                  final updatedItem = PortfolioItem(
+                                    id: item.id,
+                                    symbol: item.symbol,
+                                    name: item.name,
+                                    shares: shares,
+                                    averagePrice: price,
+                                    purchaseDate: item.purchaseDate,
+                                  );
+
+                                  await controller
+                                      .updatePortfolioItem(updatedItem);
+
+                                  sharesController.dispose();
+                                  priceController.dispose();
+
+                                  if (context.mounted) {
+                                    Navigator.of(dialogContext).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text('${item.name} 종목이 수정되었습니다'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('올바른 숫자를 입력해주세요'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.save,
+                                      size: 18, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '저장',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ));
       },
     );
   }

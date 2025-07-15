@@ -162,57 +162,54 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
       barrierDismissible: true,
       builder: (BuildContext dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 8,
-          child: Container(
-            width: 400,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 헤더
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.edit,
-                        color: Color(0xFF1A237E),
-                        size: 24,
-                      ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 8,
+            child: Container(
+              width: 400,
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                // 아이콘
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '종목 정보 수정',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A237E),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            currentItem.name,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF757575),
-                            ),
-                          ),
-                        ],
-                      ),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: const Icon(
+                    Icons.edit_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // 제목
+                const Text(
+                  '종목 정보 수정',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A237E),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 종목명
+                Flexible(
+                  child: Text(
+                    currentItem.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF757575),
+                      height: 1.4,
                     ),
-                  ],
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -297,115 +294,123 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 액션 버튼들
+                // 버튼들
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0E0E0)),
                         ),
-                      ),
-                      child: const Text(
-                        '취소',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        child: TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF757575),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          final shares = double.parse(sharesController.text);
-                          final price = double.parse(priceController.text);
-
-                          final updatedItem = PortfolioItem(
-                            id: currentItem.id,
-                            symbol: currentItem.symbol,
-                            name: currentItem.name,
-                            shares: shares,
-                            averagePrice: price,
-                            purchaseDate: currentItem.purchaseDate,
-                          );
-
-                          // 수정 실행
-                          await controller.updatePortfolioItem(updatedItem);
-
-                          // 다이얼로그 즉시 닫기
-                          Navigator.of(dialogContext).pop();
-
-                          // 로컬 아이템 상태 업데이트
-                          currentItem = updatedItem;
-
-                          // 화면 즉시 새로고침
-                          if (mounted) {
-                            setState(() {
-                              // currentItem이 업데이트되었으므로 화면에 즉시 반영됨
-                            });
-                          }
-                        } catch (e) {
-                          // 다이얼로그가 아직 열려있는지 확인 후 닫기
-                          if (Navigator.of(dialogContext).canPop()) {
-                            Navigator.of(dialogContext).pop();
-                          }
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('수정 중 오류가 발생했습니다: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                                behavior: SnackBarBehavior.floating,
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A237E),
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shadowColor: const Color(0xFF1A237E).withOpacity(0.3),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.save,
-                            size: 18,
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            '저장',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1A237E)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextButton(
+                          onPressed: () async {
+                            try {
+                              final shares =
+                                  double.parse(sharesController.text);
+                              final price = double.parse(priceController.text);
+
+                              final updatedItem = PortfolioItem(
+                                id: currentItem.id,
+                                symbol: currentItem.symbol,
+                                name: currentItem.name,
+                                shares: shares,
+                                averagePrice: price,
+                                purchaseDate: currentItem.purchaseDate,
+                              );
+
+                              // 수정 실행
+                              await controller.updatePortfolioItem(updatedItem);
+
+                              // 다이얼로그 즉시 닫기
+                              Navigator.of(dialogContext).pop();
+
+                              // 로컬 아이템 상태 업데이트
+                              currentItem = updatedItem;
+
+                              // 화면 즉시 새로고침
+                              if (mounted) {
+                                setState(() {
+                                  // currentItem이 업데이트되었으므로 화면에 즉시 반영됨
+                                });
+                              }
+                            } catch (e) {
+                              // 다이얼로그가 아직 열려있는지 확인 후 닫기
+                              if (Navigator.of(dialogContext).canPop()) {
+                                Navigator.of(dialogContext).pop();
+                              }
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        '수정 중 오류가 발생했습니다: ${e.toString()}'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                        ],
+                          child: const Text(
+                            '저장',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        );
+              ])),
+            ));
       },
     );
   }

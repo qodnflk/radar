@@ -151,12 +151,20 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
-        elevation: 8,
+        elevation: 10,
         child: Container(
           width: 400,
           padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Colors.white, Color(0xFFF8F9FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,14 +173,16 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A237E).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.business,
-                      color: Color(0xFF1A237E),
+                    child: Icon(
+                      isEditMode ? Icons.edit_rounded : Icons.add_rounded,
+                      color: Colors.white,
                       size: 24,
                     ),
                   ),
@@ -209,20 +219,32 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFB300).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFFB300).withValues(alpha: 0.1),
+                      const Color(0xFFFFB300).withValues(alpha: 0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFFFB300).withOpacity(0.3),
+                    color: const Color(0xFFFFB300).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.label,
-                      color: Color(0xFFFFB300),
-                      size: 20,
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.label,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Text(
                       '종목 심볼: ${stock.symbol}',
                       style: const TextStyle(
@@ -242,9 +264,11 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
                 decoration: InputDecoration(
                   labelText: '보유 수량',
                   hintText: '예: 10',
-                  prefixIcon: const Icon(Icons.numbers),
+                  prefixIcon:
+                      const Icon(Icons.numbers, color: Color(0xFF1A237E)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -267,9 +291,11 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
                 decoration: InputDecoration(
                   labelText: '평균 매수가 (USD)',
                   hintText: '예: 150.50',
-                  prefixIcon: const Icon(Icons.attach_money),
+                  prefixIcon:
+                      const Icon(Icons.attach_money, color: Color(0xFF1A237E)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -289,68 +315,92 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
 
               // 액션 버튼들
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: isAdding ? null : () => Get.back(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
                       ),
-                    ),
-                    child: const Text(
-                      '취소',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      child: TextButton(
+                        onPressed: isAdding ? null : () => Get.back(),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: isAdding ? null : () => addOrUpdateStock(stock),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A237E),
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shadowColor: const Color(0xFF1A237E).withOpacity(0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1A237E), Color(0xFF3F51B5)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFF1A237E).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                      child: ElevatedButton(
+                        onPressed:
+                            isAdding ? null : () => addOrUpdateStock(stock),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: isAdding
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isEditMode ? Icons.edit : Icons.add,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isEditMode ? '수정' : '추가',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
-                    child: isAdding
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isEditMode ? Icons.edit : Icons.add,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                isEditMode ? '수정' : '추가',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
                   ),
                 ],
               ),

@@ -148,7 +148,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    '배당금 세금 계산기',
+                    '세금 계산기',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -415,7 +415,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               size: 24, // 28에서 24로 줄임
             ),
           ),
-          const SizedBox(height: 6), // 8에서 6으로 줄임
+          const SizedBox(height: 4), // 8에서 6으로 줄임
           // 타이틀
           Flexible(
             child: Text(
