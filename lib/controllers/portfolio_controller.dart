@@ -66,16 +66,23 @@ class PortfolioController extends GetxController {
     try {
       isLoading.value = true;
 
-      // 먼저 로컬 데이터 로드
+      // 먼저 로컬 데이터 로드하여 즉시 UI 업데이트
       await _loadLocalData();
 
-      // 동기화가 필요한지 확인
+      // 로컬 데이터가 있으면 바로 로딩 상태 해제
+      if (portfolioItems.isNotEmpty) {
+        isLoading.value = false;
+      }
+
+      // 백그라운드에서 동기화 실행 (UI 블로킹 없이)
       if (LocalDatabaseService.needsSync('portfolio')) {
-        await _syncWithFirebase();
+        _syncWithFirebaseBackground();
+      } else {
+        // 동기화가 필요 없으면 로딩 상태 해제
+        isLoading.value = false;
       }
     } catch (e) {
       _showSnackBar('오류', '데이터 로드 중 오류가 발생했습니다', isError: true);
-    } finally {
       isLoading.value = false;
     }
   }
@@ -88,7 +95,32 @@ class PortfolioController extends GetxController {
         portfolioItems.value = localItems;
       }
     } catch (e) {
-      // 로컬 데이터 로드 실패해도 계속 진행 (메모리 효율성을 위해 로깅 생략)
+      print('Error loading local data: $e');
+      // 로컬 데이터 로드 실패해도 계속 진행
+    }
+  }
+
+  /// Firebase와 동기화 (백그라운드)
+  Future<void> _syncWithFirebaseBackground() async {
+    try {
+      // 타임아웃 설정 (10초)
+      await _syncWithFirebase().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('Firebase sync timeout');
+          isOnline.value = false;
+          _showSnackBar('타임아웃', '네트워크 연결이 느립니다', isError: true);
+        },
+      );
+    } catch (e) {
+      print('Background sync error: $e');
+      isOnline.value = false;
+      // 백그라운드 동기화 실패는 사용자에게 알리지 않음
+    } finally {
+      // 로컬 데이터가 없는 경우만 로딩 상태 해제
+      if (portfolioItems.isEmpty) {
+        isLoading.value = false;
+      }
     }
   }
 
@@ -105,7 +137,7 @@ class PortfolioController extends GetxController {
           data['id'] = doc.id;
           firebaseItems.add(PortfolioItem.fromJson(data));
         } catch (e) {
-          // 파싱 오류 무시 (메모리 효율성을 위해 로깅 생략)
+          print('Error parsing portfolio item: $e');
         }
       }
 
@@ -114,12 +146,16 @@ class PortfolioController extends GetxController {
         await LocalDatabaseService.savePortfolioItem(item);
       }
 
-      portfolioItems.value = firebaseItems;
+      // 데이터가 변경된 경우만 업데이트
+      if (firebaseItems.isNotEmpty || portfolioItems.isEmpty) {
+        portfolioItems.value = firebaseItems;
+      }
+
       await LocalDatabaseService.setSyncTimestamp('portfolio');
     } catch (e) {
       print('Error syncing with Firebase: $e');
       isOnline.value = false;
-      _showSnackBar('오프라인', '네트워크 연결을 확인해주세요', isError: true);
+      rethrow; // 에러를 다시 throw하여 상위에서 처리
     }
   }
 
@@ -182,7 +218,30 @@ class PortfolioController extends GetxController {
     try {
       isLoading.value = true;
 
-      if (isOnline.value) {
+      // 타임아웃 설정으로 안전한 처리 (10초)
+      await Future.any([
+        _performClearPortfolio(),
+        Future.delayed(const Duration(seconds: 10), () {
+          throw TimeoutException(
+              '포트폴리오 초기화 시간 초과', const Duration(seconds: 10));
+        }),
+      ]);
+
+      _showSnackBar('성공', '포트폴리오가 초기화되었습니다');
+    } on TimeoutException catch (e) {
+      print('Portfolio clear timeout: $e');
+      _showSnackBar('타임아웃', '네트워크 연결이 느립니다. 다시 시도해주세요', isError: true);
+    } catch (e) {
+      print('Error clearing portfolio: $e');
+      _showSnackBar('오류', '포트폴리오 초기화 중 오류가 발생했습니다', isError: true);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _performClearPortfolio() async {
+    if (isOnline.value) {
+      try {
         // Firebase에서 삭제
         final snapshot = await _firestore.collection('portfolio').get();
         final batch = _firestore.batch();
@@ -192,40 +251,68 @@ class PortfolioController extends GetxController {
         }
 
         await batch.commit();
+      } catch (e) {
+        print('Firebase clear error: $e');
+        isOnline.value = false;
+        // Firebase 오류 발생 시 로컬만 삭제하고 계속 진행
       }
-
-      // 로컬에서도 삭제
-      await LocalDatabaseService.clearAll();
-
-      // 메모리 리스트도 비우기
-      portfolioItems.clear();
-      portfolioItems.refresh();
-
-      _showSnackBar('성공', '포트폴리오가 초기화되었습니다');
-
-      // 잠시 대기 후 로딩 해제 (UI 업데이트 보장)
-      await Future.delayed(const Duration(milliseconds: 100));
-    } catch (e) {
-      print('Error clearing portfolio: $e');
-      _showSnackBar('오류', '포트폴리오 초기화 중 오류가 발생했습니다', isError: true);
-    } finally {
-      isLoading.value = false;
     }
+
+    // 로컬에서도 삭제
+    await LocalDatabaseService.clearAll();
+
+    // 메모리 리스트도 비우기
+    portfolioItems.clear();
+    portfolioItems.refresh();
+
+    // UI 업데이트 보장을 위한 짧은 대기
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   Future<void> addPortfolioItem(PortfolioItem item) async {
     try {
       isLoading.value = true;
 
-      final data = {
-        'symbol': item.symbol,
-        'name': item.name,
-        'shares': item.shares,
-        'averagePrice': item.averagePrice,
-        'purchaseDate': Timestamp.fromDate(item.purchaseDate),
-      };
+      // 타임아웃 설정을 20초로 늘림 (Firebase 연결 시간 고려)
+      await Future.any([
+        _performAddPortfolioItem(item),
+        Future.delayed(const Duration(seconds: 20), () {
+          throw TimeoutException('종목 추가 시간 초과', const Duration(seconds: 20));
+        }),
+      ]);
 
-      if (isOnline.value) {
+      _showSnackBar('성공', '${item.name} 종목이 추가되었습니다');
+    } on TimeoutException catch (e) {
+      print('Add portfolio item timeout: $e');
+      // 타임아웃 시에도 로컬에 저장 시도
+      await _addToLocalOnly(item);
+      _showSnackBar('로컬 저장', '${item.name} 종목이 로컬에 저장되었습니다. 네트워크 연결 후 동기화됩니다');
+    } catch (e) {
+      print('Error adding portfolio item: $e');
+      // 에러 발생 시에도 로컬에 저장 시도
+      try {
+        await _addToLocalOnly(item);
+        _showSnackBar('로컬 저장', '${item.name} 종목이 로컬에 저장되었습니다. 나중에 동기화됩니다');
+      } catch (localError) {
+        print('Local save also failed: $localError');
+        _showSnackBar('오류', '종목 추가 중 오류가 발생했습니다', isError: true);
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _performAddPortfolioItem(PortfolioItem item) async {
+    final data = {
+      'symbol': item.symbol,
+      'name': item.name,
+      'shares': item.shares,
+      'averagePrice': item.averagePrice,
+      'purchaseDate': Timestamp.fromDate(item.purchaseDate),
+    };
+
+    if (isOnline.value) {
+      try {
         // Firebase에 추가
         final docRef = await _firestore.collection('portfolio').add(data);
         item = PortfolioItem(
@@ -236,8 +323,10 @@ class PortfolioController extends GetxController {
           averagePrice: item.averagePrice,
           purchaseDate: item.purchaseDate,
         );
-      } else {
-        // 오프라인 모드: 임시 ID 생성
+      } catch (e) {
+        print('Firebase add error: $e');
+        isOnline.value = false;
+        // Firebase 오류 발생 시 오프라인 모드로 전환
         item = PortfolioItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           symbol: item.symbol,
@@ -247,24 +336,47 @@ class PortfolioController extends GetxController {
           purchaseDate: item.purchaseDate,
         );
       }
-
-      // 로컬에도 저장
-      await LocalDatabaseService.savePortfolioItem(item);
-
-      // 메모리 리스트에도 추가하여 UI에 즉시 반영
-      portfolioItems.add(item);
-      portfolioItems.refresh();
-
-      _showSnackBar('성공', '${item.name} 종목이 추가되었습니다');
-
-      // 잠시 대기 후 로딩 해제 (UI 업데이트 보장)
-      await Future.delayed(const Duration(milliseconds: 100));
-    } catch (e) {
-      print('Error adding portfolio item: $e');
-      _showSnackBar('오류', '종목 추가 중 오류가 발생했습니다', isError: true);
-    } finally {
-      isLoading.value = false;
+    } else {
+      // 오프라인 모드: 임시 ID 생성
+      item = PortfolioItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        symbol: item.symbol,
+        name: item.name,
+        shares: item.shares,
+        averagePrice: item.averagePrice,
+        purchaseDate: item.purchaseDate,
+      );
     }
+
+    // 로컬에도 저장
+    await LocalDatabaseService.savePortfolioItem(item);
+
+    // 메모리 리스트에도 추가하여 UI에 즉시 반영
+    portfolioItems.add(item);
+    portfolioItems.refresh();
+
+    // UI 업데이트 보장을 위한 짧은 대기
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  Future<void> _addToLocalOnly(PortfolioItem item) async {
+    // 로컬 전용 ID 생성
+    final localId = DateTime.now().millisecondsSinceEpoch.toString();
+    final localItem = PortfolioItem(
+      id: localId,
+      symbol: item.symbol,
+      name: item.name,
+      shares: item.shares,
+      averagePrice: item.averagePrice,
+      purchaseDate: item.purchaseDate,
+    );
+
+    // 로컬 데이터베이스에 저장
+    LocalDatabaseService.savePortfolioItem(localItem);
+
+    // UI 업데이트
+    portfolioItems.add(localItem);
+    isOnline.value = false; // 오프라인 상태로 표시
   }
 
   Future<void> updatePortfolioItem(PortfolioItem item) async {
@@ -310,19 +422,18 @@ class PortfolioController extends GetxController {
 
       final item = portfolioItems.firstWhere((item) => item.id == id);
 
-      if (isOnline.value) {
-        // Firebase에서 삭제
-        await _firestore.collection('portfolio').doc(id).delete();
-      }
-
-      // 로컬에서도 삭제
-      await LocalDatabaseService.deletePortfolioItem(id);
-
-      // 메모리 리스트에서도 제거
-      portfolioItems.removeWhere((item) => item.id == id);
-      portfolioItems.refresh();
+      // 타임아웃 설정으로 안전한 처리 (10초)
+      await Future.any([
+        _performDeletePortfolioItem(id),
+        Future.delayed(const Duration(seconds: 10), () {
+          throw TimeoutException('종목 삭제 시간 초과', const Duration(seconds: 10));
+        }),
+      ]);
 
       _showSnackBar('성공', '${item.name} 종목이 삭제되었습니다');
+    } on TimeoutException catch (e) {
+      print('Delete portfolio item timeout: $e');
+      _showSnackBar('타임아웃', '네트워크 연결이 느립니다. 다시 시도해주세요', isError: true);
     } catch (e) {
       print('Error deleting portfolio item: $e');
       _showSnackBar('오류', '종목 삭제 중 오류가 발생했습니다', isError: true);
@@ -330,6 +441,29 @@ class PortfolioController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> _performDeletePortfolioItem(String id) async {
+    if (isOnline.value) {
+      try {
+        // Firebase에서 삭제
+        await _firestore.collection('portfolio').doc(id).delete();
+      } catch (e) {
+        print('Firebase delete error: $e');
+        isOnline.value = false;
+        // Firebase 오류 발생 시 로컬만 삭제하고 계속 진행
+      }
+    }
+
+    // 로컬에서도 삭제
+    await LocalDatabaseService.deletePortfolioItem(id);
+
+    // 메모리 리스트에서도 제거
+    portfolioItems.removeWhere((item) => item.id == id);
+    portfolioItems.refresh();
+
+    // UI 업데이트 보장을 위한 짧은 대기
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   Future<List<PortfolioItem>> searchStocks(String query) async {
@@ -361,8 +495,20 @@ class PortfolioController extends GetxController {
   Future<void> manualSync() async {
     try {
       isLoading.value = true;
-      await _syncWithFirebase();
+
+      // 타임아웃 설정으로 안전한 동기화 (15초)
+      await _syncWithFirebase().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          isOnline.value = false;
+          throw TimeoutException('동기화 시간 초과', const Duration(seconds: 15));
+        },
+      );
+
       _showSnackBar('성공', '데이터가 동기화되었습니다');
+    } on TimeoutException catch (e) {
+      print('Manual sync timeout: $e');
+      _showSnackBar('타임아웃', '네트워크 연결이 느립니다. 다시 시도해주세요', isError: true);
     } catch (e) {
       print('Error in manual sync: $e');
       _showSnackBar('오류', '동기화 중 오류가 발생했습니다', isError: true);

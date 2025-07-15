@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:async';
-import '../../controllers/portfolio_controller.dart';
 import '../../models/portfolio_item.dart';
+import '../../controllers/portfolio_controller.dart';
+import 'dart:async';
 
 class PortfolioAddScreen extends StatefulWidget {
   final PortfolioItem? editingItem;
@@ -102,28 +102,43 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
             isEditMode ? widget.editingItem!.purchaseDate : DateTime.now(),
       );
 
-      // 다이얼로그를 닫습니다
-      Get.back();
+      // 추가/수정 작업 실행
+      if (isEditMode) {
+        await controller.updatePortfolioItem(portfolioItem);
+      } else {
+        await controller.addPortfolioItem(portfolioItem);
+      }
 
-      try {
-        if (isEditMode) {
-          await controller.editPortfolioItem(
-              widget.editingItem!, portfolioItem);
-        } else {
-          await controller.addPortfolioItem(portfolioItem);
-        }
+      // 성공 시 Dialog 닫기
+      if (mounted) {
+        Get.back(); // Dialog 닫기
+      }
 
-        // 성공 시 화면을 닫고 포트폴리오 리스트로 돌아갑니다
-        Get.back();
-      } catch (e) {
-        print('Portfolio operation error: $e');
-        // 오류가 발생해도 화면을 닫습니다
-        Get.back();
+      // 성공 후 메인 화면으로 돌아가기
+      if (mounted) {
+        Navigator.of(context).pop();
       }
     } catch (e) {
-      Get.snackbar('오류', '올바른 숫자를 입력해주세요');
+      print('Portfolio operation error: $e');
+      // 에러 발생 시 Dialog 닫기
+      if (mounted) {
+        Get.back(); // Dialog 닫기
+      }
+
+      // 에러 메시지 표시
+      if (mounted) {
+        Get.snackbar(
+          '오류',
+          '${isEditMode ? '수정' : '추가'} 중 오류가 발생했습니다',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
     } finally {
-      setState(() => isAdding = false);
+      // 항상 로딩 상태 해제
+      if (mounted) {
+        setState(() => isAdding = false);
+      }
     }
   }
 
@@ -349,91 +364,232 @@ class _PortfolioAddScreenState extends State<PortfolioAddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 수정 모드일 때는 바로 다이얼로그 표시
-    if (isEditMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showAddDialog(widget.editingItem!);
-      });
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditMode ? '종목 수정' : '종목 추가'),
       ),
-      body: isEditMode
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      labelText: '종목 검색',
-                      hintText: '종목명 또는 심볼을 입력하세요',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                searchController.clear();
-                                searchStocks('');
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: '종목 검색',
+                hintText: '종목명 또는 심볼을 입력하세요',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          searchController.clear();
+                          searchStocks('');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onChanged: (value) => searchStocks(value),
+              // 수정 모드일 때는 검색 비활성화
+              enabled: !isEditMode,
+            ),
+          ),
+          Expanded(
+            child: isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : searchResults.isEmpty && !isEditMode
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.search,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              searchController.text.isEmpty
+                                  ? '종목을 검색해주세요'
+                                  : '검색 결과가 없습니다',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : isEditMode
+                        ? _buildEditModeContent()
+                        : ListView.builder(
+                            itemCount: searchResults.length,
+                            itemBuilder: (context, index) {
+                              final stock = searchResults[index];
+                              return ListTile(
+                                leading: const CircleAvatar(
+                                  child: Icon(Icons.business),
+                                ),
+                                title: Text(stock.name),
+                                subtitle: Text(stock.symbol),
+                                trailing: const Icon(Icons.add),
+                                onTap: () => showAddDialog(stock),
+                              );
+                            },
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditModeContent() {
+    final item = widget.editingItem!;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 종목 정보 표시
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '종목 정보',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.business, size: 20, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              item.symbol,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 수정 가능한 필드들
+          TextField(
+            controller: sharesController,
+            decoration: InputDecoration(
+              labelText: '보유 수량',
+              hintText: '예: 10',
+              prefixIcon: const Icon(Icons.numbers),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: priceController,
+            decoration: InputDecoration(
+              labelText: '평균 매수가 (USD)',
+              hintText: '예: 150.50',
+              prefixIcon: const Icon(Icons.attach_money),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 24),
+          // 저장 버튼
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isAdding
+                  ? null
+                  : () async {
+                      // 타임아웃 처리를 위한 Future wrapper
+                      try {
+                        await Future.any([
+                          addOrUpdateStock(item),
+                          Future.delayed(const Duration(seconds: 25), () {
+                            throw TimeoutException(
+                                '작업 시간 초과', const Duration(seconds: 25));
+                          }),
+                        ]);
+                      } on TimeoutException catch (e) {
+                        print('Dialog operation timeout: $e');
+                        // 타임아웃 시 Dialog 강제 닫기
+                        if (mounted) {
+                          Get.back();
+                        }
+                        Get.snackbar(
+                          '타임아웃',
+                          '작업 시간이 초과되었습니다. 다시 시도해주세요',
+                          backgroundColor: Colors.orange,
+                          colorText: Colors.white,
+                        );
+                      } catch (e) {
+                        print('Dialog operation error: $e');
+                        // 에러 시 Dialog 강제 닫기
+                        if (mounted) {
+                          Get.back();
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A237E),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: isAdding
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      '수정 완료',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    onChanged: (value) => searchStocks(value),
-                  ),
-                ),
-                Expanded(
-                  child: isSearching
-                      ? const Center(child: CircularProgressIndicator())
-                      : searchResults.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.search,
-                                    size: 64,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    searchController.text.isEmpty
-                                        ? '종목을 검색해주세요'
-                                        : '검색 결과가 없습니다',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: searchResults.length,
-                              itemBuilder: (context, index) {
-                                final stock = searchResults[index];
-                                return ListTile(
-                                  leading: const CircleAvatar(
-                                    child: Icon(Icons.business),
-                                  ),
-                                  title: Text(stock.name),
-                                  subtitle: Text(stock.symbol),
-                                  trailing: const Icon(Icons.add),
-                                  onTap: () => showAddDialog(stock),
-                                );
-                              },
-                            ),
-                ),
-              ],
             ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 }
